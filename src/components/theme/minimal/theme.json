@@ -1,0 +1,20 @@
+{
+  "name": "Minimal",
+  "description": "Text-forward, minimal typography for long-form reading",
+  "version": "1.0.0",
+  "author": "RLine CMS",
+  "colors": {
+    "primary": "#44403c",
+    "secondary": "#78716c",
+    "background": "#fafaf9",
+    "foreground": "#1c1917",
+    "muted": "#78716c",
+    "border": "#e7e5e4"
+  },
+  "typography": {
+    "fontFamily": "var(--font-serif)",
+    "fontSize": "17px",
+    "lineHeight": "1.65",
+    "headingFont": "var(--font-heading)"
+  }
+}

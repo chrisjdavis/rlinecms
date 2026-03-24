@@ -1,0 +1,422 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Account {
+  id                String   @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([identifier, token])
+}
+
+model User {
+  id                       String            @id @default(cuid())
+  name                     String?
+  email                    String            @unique
+  password                 String
+  role                     Role              @default(USER)
+  createdAt                DateTime          @default(now())
+  updatedAt                DateTime          @updatedAt
+  emailVerificationToken   String?
+  emailVerified            DateTime?
+  username                 String?           @unique
+  bio                      String?
+  emailVerificationExpires DateTime?
+  lastLoginAt              DateTime?
+  lastLoginIp              String?
+  failedLoginAttempts      Int               @default(0)
+  lastFailedLoginAt        DateTime?
+  lockedUntil              DateTime?
+  sessionVersion           Int               @default(1)
+  resetPasswordExpires     DateTime?
+  resetPasswordToken       String?
+  deletedAt                DateTime?
+  avatar                   String?
+  version                  Int               @default(1)
+  accounts                 Account[]
+  comments                 Comment[]
+  pages                    Page[]
+  posts                    Post[]
+  profileLinks             ProfileLink[]
+  reactions                Reaction[]
+  rebuildLogs              RebuildLog[]
+  sessions                 Session[]
+  themes                   Theme[]
+  activityLogs             UserActivityLog[]
+  preferences              UserPreference?
+  siteSettings             SiteSettings[]
+  cronJobs                 CronJob[]
+  apiKeys                  ApiKey[]
+
+  @@index([email])
+  @@index([username])
+  @@index([role])
+}
+
+model Post {
+  id          String     @id @default(cuid())
+  title       String
+  slug        String     @unique
+  excerpt     String?
+  status      Status     @default(DRAFT)
+  authorId    String
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  content     Json
+  version     Int        @default(1)
+  scheduledAt DateTime?  @db.Timestamp(6)
+  blocks      Block[]
+  comments    Comment[]
+  metadata    Metadata[]
+  author      User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([authorId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model Page {
+  id        String     @id @default(cuid())
+  title     String
+  slug      String     @unique
+  status    Status     @default(DRAFT)
+  authorId  String
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  content   Json
+  version   Int        @default(1)
+  blocks    Block[]
+  metadata  Metadata[]
+  author    User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([authorId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model Comment {
+  id        String     @id @default(cuid())
+  content   String
+  postId    String
+  authorId  String
+  parentId  String?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  version   Int        @default(1)
+  author    User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  parent    Comment?   @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   Comment[]  @relation("CommentReplies")
+  post      Post       @relation(fields: [postId], references: [id], onDelete: Cascade)
+  reactions Reaction[]
+
+  @@index([postId])
+  @@index([authorId])
+  @@index([parentId])
+  @@index([createdAt])
+}
+
+model Block {
+  id        String   @id @default(cuid())
+  type      String
+  content   Json
+  order     Int
+  postId    String?
+  pageId    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  version   Int      @default(1)
+  page      Page?    @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  post      Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, order])
+  @@unique([pageId, order])
+  @@index([postId])
+  @@index([pageId])
+}
+
+model RebuildLog {
+  id        String    @id @default(cuid())
+  userId    String
+  action    String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime? @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model SiteSettings {
+  id               String           @id @default(cuid())
+  title            String
+  description      String?
+  updatedAt        DateTime         @updatedAt
+  userId           String
+  latitude         Float?
+  location         String?
+  longitude        Float?
+  aiKey            String?
+  analyticsSnippet String?
+  easycronApiKey   String?
+  easycronEnabled  Boolean          @default(false)
+  easycronWebhookUrl String?
+  enabledModules   Json?            // Array of module ids (e.g. ["updates"]) for extensions
+  enabledThemes    Json?            // Array of theme path ids (e.g. ["minimal"]) for theme system
+  createdAt        DateTime         @default(now())
+  navigation       NavigationItem[]
+  updatedBy        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("site_settings")
+}
+
+model NavigationItem {
+  id         String       @id @default(cuid())
+  label      String
+  url        String
+  order      Int
+  location   NavLocation
+  settingsId String
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  settings   SiteSettings @relation(fields: [settingsId], references: [id], onDelete: Cascade)
+
+  @@unique([settingsId, location, order])
+  @@map("navigation_items")
+}
+
+model Theme {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  version     String?
+  author      String?
+  isActive    Boolean   @default(false)
+  themePath   String
+  authorId    String
+  type        ThemeType @default(ADMIN)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  user        User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@map("Theme")
+}
+
+model Metadata {
+  id        String   @id @default(cuid())
+  key       String
+  value     Json
+  type      String
+  postId    String?
+  pageId    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  page      Page?    @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  post      Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([key, postId])
+  @@unique([key, pageId])
+  @@index([key])
+}
+
+model Reaction {
+  id        String       @id @default(cuid())
+  type      ReactionType
+  userId    String
+  commentId String
+  createdAt DateTime     @default(now())
+  updatedAt DateTime?    @default(now())
+  comment   Comment      @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, commentId, type])
+}
+
+model ProfileLink {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  url       String
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, title])
+  @@index([userId])
+}
+
+model UserPreference {
+  id                   String   @id @default(cuid())
+  userId               String   @unique
+  notificationsEnabled Boolean  @default(false)
+  language             String   @default("en")
+  profilePublic        Boolean  @default(false)
+  commentsEnabled      Boolean  @default(false)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model UserActivityLog {
+  id        String    @id @default(cuid())
+  userId    String
+  action    String
+  ip        String?
+  userAgent String?
+  metadata  Json?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime? @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model CronJob {
+  id              String    @id @default(cuid())
+  name            String
+  description     String?
+  url             String
+  frequency       String
+  cronExpression  String
+  enabled         Boolean   @default(true)
+  lastRun         DateTime?
+  nextRun         DateTime?
+  easycronJobId   String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  createdBy       String
+  user            User      @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  executions      CronJobExecution[]
+
+  @@index([createdBy])
+  @@index([enabled])
+  @@index([nextRun])
+}
+
+model CronJobExecution {
+  id          String           @id @default(cuid())
+  cronJobId   String
+  cronJob     CronJob          @relation(fields: [cronJobId], references: [id], onDelete: Cascade)
+  status      ExecutionStatus
+  startedAt   DateTime         @default(now())
+  completedAt DateTime?
+  duration    Int?
+  response    String?
+  error       String?
+  httpStatus  Int?
+
+  @@index([cronJobId])
+  @@index([status])
+  @@index([startedAt])
+}
+
+model ApiKey {
+  id          String    @id @default(cuid())
+  name        String
+  key         String    @unique
+  userId      String
+  lastUsedAt  DateTime?
+  expiresAt   DateTime?
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([key])
+  @@index([userId])
+  @@index([isActive])
+}
+
+model Project {
+  id              String   @id @default(cuid())
+  title           String
+  url             String?
+  shortDescription String @db.Text
+  carouselOrder   Int      @default(0)
+  heroImage       String?
+  icon            String?
+  status          Status   @default(PUBLISHED)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([carouselOrder])
+  @@index([status])
+}
+
+enum Role {
+  USER
+  ADMIN
+  COMMENTER
+}
+
+enum Status {
+  DRAFT
+  PUBLISHED
+  SCHEDULED
+}
+
+enum ThemeType {
+  ADMIN
+  PUBLIC
+}
+
+enum NavLocation {
+  HEADER
+  FOOTER
+}
+
+enum ReactionType {
+  LIKE
+  LOVE
+  LAUGH
+  WOW
+  SAD
+  ANGRY
+}
+
+enum ExecutionStatus {
+  RUNNING
+  SUCCESS
+  FAILED
+  TIMEOUT
+}
