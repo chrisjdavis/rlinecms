@@ -1,3 +1,5 @@
+# This probably doesn't work. Unless you like to tinker, I would wait for a few weeks.
+
 # RLine CMS
 
 A Next.js content management system with an admin UI, block-based content, authentication, and optional integrations (email, object storage, GitHub, weather, Last.fm, and more).
